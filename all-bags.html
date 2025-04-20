@@ -1235,8 +1235,13 @@
             document.querySelectorAll('.add-to-cart').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
-                    e.stopPropagation();
-                    alert('تمت إضافة المنتج إلى سلة التسوق');
+                    const productCard = this.closest('.camera-card');
+                    const productName = productCard.querySelector('.camera-title').textContent;
+                    const productPrice = productCard.querySelector('.camera-price').textContent.trim();
+                    const productImage = productCard.querySelector('.camera-image img').src;
+                    
+                    // إضافة المنتج للسلة
+                    addToCart(productName, productPrice, productImage);
                 });
             });
 
@@ -1373,7 +1378,60 @@
                     this.closest('.product-popup').style.display = 'none';
                 });
             });
+
+            // تحديث عداد السلة عند تحميل الصفحة
+            updateCartCount();
         });
+
+        // دالة إضافة المنتج للسلة
+        function addToCart(name, price, image) {
+            // الحصول على السلة الحالية من localStorage
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+            
+            // التحقق مما إذا كان المنتج موجوداً بالفعل في السلة
+            const existingProduct = cart.find(item => item.name === name);
+            
+            if (existingProduct) {
+                // إذا كان المنتج موجوداً، نزيد الكمية
+                existingProduct.quantity += 1;
+            } else {
+                // إذا لم يكن موجوداً، نضيفه كمنتج جديد
+                cart.push({
+                    name: name,
+                    price: price,
+                    image: image,
+                    quantity: 1
+                });
+            }
+            
+            // حفظ السلة المحدثة
+            localStorage.setItem('cart', JSON.stringify(cart));
+            
+            // تحديث عداد السلة
+            updateCartCount();
+            
+            // عرض إشعار نجاح
+            showNotification('تمت إضافة المنتج إلى السلة بنجاح', 'success');
+        }
+
+        // دالة تحديث عداد السلة
+        function updateCartCount() {
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const cartCount = document.querySelector('.cart-count');
+            cartCount.textContent = cart.length;
+        }
+
+        // دالة لعرض الإشعارات
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
     </script>
 </body>
 </html> 
