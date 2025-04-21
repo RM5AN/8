@@ -555,13 +555,13 @@
             margin-right: 5px;
             order: -1;
         }
-
+        
         .modal-actions {
             display: flex;
             gap: 15px;
             margin-top: 10px;
         }
-
+        
         .modal-actions button {
             flex: 1;
             padding: 12px;
@@ -576,12 +576,12 @@
             justify-content: center;
             gap: 8px;
         }
-
+        
         .modal-add-to-cart {
             background-color: #165b8a;
             color: white;
         }
-
+        
         .modal-add-to-favorites {
             background-color: #f1f1f1;
             color: #333;
@@ -2281,15 +2281,53 @@
             let visibleCount = 0;
             let visibleProducts = [];
             
+            // تحليل نطاق السعر
+            let minPrice = 0;
+            let maxPrice = Infinity;
+            
+            if (price) {
+                if (price === '0-500') {
+                    minPrice = 0;
+                    maxPrice = 500;
+                } else if (price === '501-1000') {
+                    minPrice = 501;
+                    maxPrice = 1000;
+                } else if (price === '1001-2000') {
+                    minPrice = 1001;
+                    maxPrice = 2000;
+                } else if (price === '2001-5000') {
+                    minPrice = 2001;
+                    maxPrice = 5000;
+                } else if (price === '5001+') {
+                    minPrice = 5001;
+                    maxPrice = Infinity;
+                }
+            }
+            
             products.forEach(product => {
                 const matchCategory = !category || product.dataset.category === category;
                 const matchBrand = !brand || product.dataset.brand === brand;
-                // يمكن إضافة تصفية السعر هنا
                 
-                if (matchCategory && matchBrand) {
+                // استخراج السعر من نص السعر
+                let productPrice = 0;
+                const priceElement = product.querySelector('.camera-price, .price, .product-price');
+                if (priceElement) {
+                    const priceText = priceElement.textContent.trim();
+                    // التعامل مع الأرقام العربية والإنجليزية
+                    let numericPrice = priceText.replace(/[^\d٠١٢٣٤٥٦٧٨٩]/g, '');
+                    // تحويل الأرقام العربية إلى إنجليزية
+                    numericPrice = numericPrice.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+                    productPrice = parseInt(numericPrice, 10) || 0;
+                }
+                
+                // تصفية السعر
+                const matchPrice = !price || (productPrice >= minPrice && productPrice <= maxPrice);
+                
+                if (matchCategory && matchBrand && matchPrice) {
                     product.classList.add('filtered-in');
                     visibleCount++;
                     visibleProducts.push(product);
+                    product.style.display = '';
                 } else {
                     product.classList.remove('filtered-in');
                     product.style.display = 'none';
@@ -2662,7 +2700,7 @@
         
         // تطبيق التصفية الأولية
         filterByAvailability();
-    });
+    
     </script>
 
     <!-- إصلاح شامل لأزرار السلة والمفضلة وروابط الموقع -->
@@ -2903,7 +2941,7 @@
                 addToCart(productName, productPrice, productImage);
             });
         });
-
+        
         // إضافة للمفضلة
         document.querySelectorAll('.add-to-favorites').forEach(button => {
             button.addEventListener('click', function(e) {
@@ -3015,7 +3053,7 @@
                 if (icon) {
                     icon.style.color = '#e74c3c';
                 }
-            } else {
+                } else {
                 button.classList.remove('active');
                 const icon = button.querySelector('i');
                 if (icon) {
@@ -3037,5 +3075,8 @@
         }, 3000);
     }
     </script>
+
+    <!-- استدعاء ملف التصفية الرئيسي -->
+    <script src="all-products.js"></script>
 </body>
 </html> 
