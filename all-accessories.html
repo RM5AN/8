@@ -1336,116 +1336,141 @@
                 select.addEventListener('change', filterAccessories);
             });
 
-            // إضافة وظائف سلة التسوق والمفضلة
-            document.querySelectorAll('.add-to-cart').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const productCard = this.closest('.camera-card');
-                    const productName = productCard.querySelector('.camera-title').textContent;
-                    const productPrice = productCard.querySelector('.camera-price').textContent.trim();
-                    const productImage = productCard.querySelector('.camera-image img').src;
-                    
-                    // إضافة المنتج للسلة
-                    addToCart(productName, productPrice, productImage);
-                });
-            });
+            // دالة إضافة المنتج للسلة
+            function addToCart(name, price, image) {
+                // تنظيف السعر من الرموز والأرقام العربية
+                const cleanPrice = price.replace(/[^\d]/g, '');
+                
+                // الحصول على السلة الحالية من localStorage
+                let cart = JSON.parse(localStorage.getItem('cart')) || [];
+                
+                // التحقق مما إذا كان المنتج موجوداً بالفعل في السلة
+                const existingProduct = cart.find(item => item.name === name);
+                
+                if (existingProduct) {
+                    // إذا كان المنتج موجوداً، نزيد الكمية
+                    existingProduct.quantity += 1;
+                } else {
+                    // إذا لم يكن موجوداً، نضيفه كمنتج جديد
+                    cart.push({
+                        name: name,
+                        price: cleanPrice,
+                        image: image,
+                        quantity: 1,
+                        category: 'accessories'
+                    });
+                }
+                
+                // حفظ السلة المحدثة
+                localStorage.setItem('cart', JSON.stringify(cart));
+                
+                // تحديث عداد السلة
+                updateCartCount();
+                
+                // عرض إشعار نجاح
+                showNotification('تمت إضافة المنتج إلى السلة بنجاح', 'success');
+            }
 
-            document.querySelectorAll('.add-to-favorites').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.querySelector('i').classList.toggle('active');
-                    alert('تمت إضافة المنتج إلى المفضلة');
+            // دالة تحديث عداد السلة
+            function updateCartCount() {
+                const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = totalItems;
+                }
+            }
+
+            // دالة لعرض الإشعارات
+            function showNotification(message, type) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+
+            // دالة عرض النافذة المنبثقة
+            function showProductModal(card) {
+                const title = card.querySelector('.camera-title').textContent;
+                const image = card.querySelector('.camera-image img').src;
+                const price = card.querySelector('.camera-price').textContent;
+                const specs = card.querySelectorAll('.camera-specs span');
+                const badge = card.querySelector('.camera-badge');
+                
+                // تحديث محتوى النافذة المنبثقة
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalMainImage').src = image;
+                
+                // إضافة الشارة إذا وجدت
+                const modalHeader = document.querySelector('.modal-header');
+                if (badge) {
+                    const modalBadge = document.createElement('div');
+                    modalBadge.className = 'camera-badge';
+                    modalBadge.style.cssText = badge.style.cssText;
+                    modalBadge.textContent = badge.textContent;
+                    modalHeader.appendChild(modalBadge);
+                }
+                
+                // تحديث الصور المصغرة
+                const thumbnailsContainer = document.getElementById('modalThumbnails');
+                thumbnailsContainer.innerHTML = '';
+                
+                const popupThumbs = card.querySelector('.product-popup .popup-thumbs');
+                if (popupThumbs) {
+                    const thumbImages = popupThumbs.querySelectorAll('.popup-thumb img');
+                    thumbImages.forEach((thumbImg, index) => {
+                        const thumb = document.createElement('div');
+                        thumb.className = 'modal-thumb';
+                        thumb.innerHTML = `<img src="${thumbImg.src}" alt="${title} - صورة ${index+1}">`;
+                        thumb.addEventListener('click', function() {
+                            document.getElementById('modalMainImage').src = this.querySelector('img').src;
+                        });
+                        thumbnailsContainer.appendChild(thumb);
+                    });
+                }
+                
+                // تحديث المواصفات
+                const modalSpecs = document.getElementById('modalSpecs');
+                modalSpecs.innerHTML = '<h3>المواصفات</h3><ul></ul>';
+                const specsList = modalSpecs.querySelector('ul');
+                
+                specs.forEach(spec => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = spec.innerHTML;
+                    specsList.appendChild(listItem);
                 });
-            });
-            
-            // إضافة وظيفة زر عرض التفاصيل
+                
+                // إضافة معلومات إضافية من النافذة المنبثقة الصغيرة
+                const popupDetails = card.querySelector('.product-popup .popup-details');
+                if (popupDetails) {
+                    const popupDetailItems = popupDetails.querySelectorAll('.popup-detail');
+                    popupDetailItems.forEach(item => {
+                        const label = item.querySelector('.detail-label').textContent;
+                        const value = item.querySelector('.detail-value').textContent;
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
+                        specsList.appendChild(listItem);
+                    });
+                }
+                
+                // تحديث السعر
+                document.getElementById('modalPrice').innerHTML = `<span class="popup-sar-symbol"></span><span>${price}</span>`;
+                
+                // عرض النافذة المنبثقة
+                document.getElementById('productModal').style.display = 'block';
+            }
+
+            // تحديث مستمع الحدث لزر عرض التفاصيل
             document.querySelectorAll('.view-details-btn').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
-                    // الحصول على بيانات البطاقة
                     const card = this.closest('.camera-card');
-                    const title = card.querySelector('.camera-title').textContent;
-                    const image = card.querySelector('.camera-image img').src;
-                    const price = card.querySelector('.camera-price').textContent;
-                    
-                    // تحديث بيانات النافذة المنبثقة
-                    document.getElementById('modalTitle').textContent = title;
-                    document.getElementById('modalMainImage').src = image;
-                    
-                    // إنشاء الصور المصغرة
-                    const thumbnailsContainer = document.getElementById('modalThumbnails');
-                    thumbnailsContainer.innerHTML = '';
-                    
-                    // استخدام الصور المصغرة الفعلية من البطاقة
-                    const thumbnails = card.querySelectorAll('.popup-thumbs .popup-thumb img');
-                    
-                    thumbnails.forEach((thumbImg, index) => {
-                        const thumb = document.createElement('div');
-                        thumb.className = 'modal-thumb';
-                        thumb.innerHTML = `<img src="${thumbImg.src}" alt="${title} - صورة ${index+1}">`;
-                        
-                        // تغيير الصورة الرئيسية عند النقر على المصغرة
-                        thumb.addEventListener('click', function() {
-                            document.getElementById('modalMainImage').src = this.querySelector('img').src;
-                        });
-                        
-                        thumbnailsContainer.appendChild(thumb);
-                    });
-                    
-                    // تعيين الصورة الأولى كصورة رئيسية افتراضياً
-                    if (thumbnails.length > 0) {
-                        document.getElementById('modalMainImage').src = thumbnails[0].src;
-                    }
-                    
-                    // إضافة المواصفات
-                    const modalSpecs = document.getElementById('modalSpecs');
-                    modalSpecs.innerHTML = '';
-                    
-                    // إضافة عنوان للمواصفات
-                    const specsTitle = document.createElement('h3');
-                    specsTitle.textContent = 'المواصفات';
-                    modalSpecs.appendChild(specsTitle);
-                    
-                    // نسخ المواصفات من البطاقة
-                    const specs = card.querySelectorAll('.camera-specs span');
-                    const specsList = document.createElement('ul');
-                    
-                    specs.forEach(spec => {
-                        const listItem = document.createElement('li');
-                        listItem.innerHTML = spec.innerHTML;
-                        specsList.appendChild(listItem);
-                    });
-                    
-                    modalSpecs.appendChild(specsList);
-                    
-                    // إضافة معلومات إضافية من النافذة المنبثقة الصغيرة إذا وجدت
-                    const popupDetails = card.querySelector('.product-popup .popup-details');
-                    if (popupDetails) {
-                        const popupDetailItems = popupDetails.querySelectorAll('.popup-detail');
-                        popupDetailItems.forEach(item => {
-                            const label = item.querySelector('.detail-label').textContent;
-                            const value = item.querySelector('.detail-value').textContent;
-                            
-                            const listItem = document.createElement('li');
-                            listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
-                            specsList.appendChild(listItem);
-                        });
-                    }
-                    
-                    // إضافة معلومات التوفر مباشرة بعد المواصفات
-                    const availabilityElement = document.createElement('div');
-                    availabilityElement.className = 'modal-availability';
-                    availabilityElement.innerHTML = '<i class="fas fa-check-circle"></i> متوفر في المخزون';
-                    modalSpecs.appendChild(availabilityElement);
-                    
-                    // إضافة السعر
-                    document.getElementById('modalPrice').innerHTML = `<span class="popup-sar-symbol"></span><span>${price}</span>`;
-                    
-                    // عرض النافذة المنبثقة
-                    document.getElementById('productModal').style.display = 'block';
+                    showProductModal(card);
                 });
             });
 
@@ -1464,78 +1489,116 @@
                     modal.style.display = 'none';
                 }
             }
-
-            // إضافة وظائف لأزرار النافذة المنبثقة
-            document.querySelector('.modal-add-to-cart').addEventListener('click', function() {
-                alert('تمت إضافة المنتج إلى سلة التسوق');
-            });
-            
-            document.querySelector('.modal-add-to-favorites').addEventListener('click', function() {
-                alert('تمت إضافة المنتج إلى المفضلة');
-                this.innerHTML = '<i class="fas fa-heart" style="color: #e74c3c;"></i> تمت الإضافة للمفضلة';
-            });
-            
-            // إضافة وظائف لإغلاق النوافذ المنبثقة الصغيرة
-            document.querySelectorAll('.popup-close').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    this.closest('.product-popup').style.display = 'none';
-                });
-            });
-
-            // تحديث عداد السلة عند تحميل الصفحة
-            updateCartCount();
         });
 
-        // دالة إضافة المنتج للسلة
-        function addToCart(name, price, image) {
-            // الحصول على السلة الحالية من localStorage
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        // تحديث عداد المفضلة
+        function updateFavoritesCount() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const favoritesCount = document.querySelector('.favorites-count');
+            if (favoritesCount) {
+                favoritesCount.textContent = favorites.length;
+            }
+        }
+
+        // إضافة مستمعي الأحداث لأزرار السلة
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const card = this.closest('.camera-card');
+                const productName = card.querySelector('.camera-title').textContent;
+                const productPrice = card.querySelector('.camera-price').textContent.trim();
+                const productImage = card.querySelector('.camera-image img').src;
+                
+                addToCart(productName, productPrice, productImage);
+            });
+        });
+
+        document.querySelector('.modal-add-to-cart').addEventListener('click', function() {
+            const productName = document.getElementById('modalTitle').textContent;
+            const productPrice = document.getElementById('modalPrice').textContent.trim();
+            const productImage = document.getElementById('modalMainImage').src;
             
-            // التحقق مما إذا كان المنتج موجوداً بالفعل في السلة
-            const existingProduct = cart.find(item => item.name === name);
+            addToCart(productName, productPrice, productImage);
+        });
+
+        // تحديث العدادات عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCartCount();
+            updateFavoritesCount();
+        });
+
+        // دالة تحديث حالة القلب في كل مكان
+        function updateHeartStatus(productName, isFavorite) {
+            // تحديث القلب في الصفحة الرئيسية
+            document.querySelectorAll('.camera-card').forEach(card => {
+                if (card.querySelector('.camera-title').textContent === productName) {
+                    const heartIcon = card.querySelector('.add-to-favorites i');
+                    heartIcon.style.color = isFavorite ? '#e74c3c' : '#333';
+                }
+            });
             
-            if (existingProduct) {
-                // إذا كان المنتج موجوداً، نزيد الكمية
-                existingProduct.quantity += 1;
+            // تحديث القلب في النافذة المنبثقة
+            const modalTitle = document.getElementById('modalTitle');
+            if (modalTitle && modalTitle.textContent === productName) {
+                const modalHeartIcon = document.querySelector('.modal-add-to-favorites i');
+                if (modalHeartIcon) {
+                    modalHeartIcon.style.color = isFavorite ? '#e74c3c' : '#333';
+                }
+            }
+        }
+
+        // دالة إضافة/إزالة من المفضلة
+        function toggleFavorite(productName, productPrice, productImage) {
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const isFavorite = favorites.some(item => item.name === productName);
+            
+            if (isFavorite) {
+                favorites = favorites.filter(item => item.name !== productName);
             } else {
-                // إذا لم يكن موجوداً، نضيفه كمنتج جديد
-                cart.push({
-                    name: name,
-                    price: price,
-                    image: image,
-                    quantity: 1
-                });
+                favorites.push({ name: productName, price: productPrice, image: productImage });
             }
             
-            // حفظ السلة المحدثة
-            localStorage.setItem('cart', JSON.stringify(cart));
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            updateHeartStatus(productName, !isFavorite);
+            updateFavoritesCount();
             
-            // تحديث عداد السلة
-            updateCartCount();
-            
-            // عرض إشعار نجاح
-            showNotification('تمت إضافة المنتج إلى السلة بنجاح', 'success');
+            // عرض إشعار
+            showNotification(isFavorite ? 'تم إزالة المنتج من المفضلة' : 'تمت إضافة المنتج إلى المفضلة', 'success');
         }
 
-        // دالة تحديث عداد السلة
-        function updateCartCount() {
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
-            const cartCount = document.querySelector('.cart-count');
-            cartCount.textContent = cart.length;
-        }
+        // تحديث مستمعي الأحداث لأزرار المفضلة
+        document.querySelectorAll('.add-to-favorites').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const card = this.closest('.camera-card');
+                const productName = card.querySelector('.camera-title').textContent;
+                const productPrice = card.querySelector('.camera-price').textContent;
+                const productImage = card.querySelector('.camera-image img').src;
+                
+                toggleFavorite(productName, productPrice, productImage);
+            });
+        });
 
-        // دالة لعرض الإشعارات
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
+        document.querySelector('.modal-add-to-favorites').addEventListener('click', function() {
+            const productName = document.getElementById('modalTitle').textContent;
+            const productPrice = document.getElementById('modalPrice').textContent;
+            const productImage = document.getElementById('modalMainImage').src;
             
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
-        }
+            toggleFavorite(productName, productPrice, productImage);
+        });
+
+        // تحديث حالة القلب عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            favorites.forEach(item => {
+                updateHeartStatus(item.name, true);
+            });
+            updateFavoritesCount();
+        });
     </script>
 </body>
 </html> 

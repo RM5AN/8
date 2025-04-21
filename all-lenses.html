@@ -1197,7 +1197,7 @@
                     <div class="modal-price" id="modalPrice"></div>
                     <div class="modal-actions">
                         <button class="modal-add-to-cart"><i class="fas fa-shopping-cart"></i> إضافة للسلة</button>
-                        <button class="modal-add-to-favorites"><i class="fas fa-heart"></i> إضافة للمفضلة</button>
+                        <button class="modal-add-to-favorites"><i class="fas fa-heart"></i></button>
                     </div>
                 </div>
             </div>
@@ -1263,198 +1263,164 @@
             });
         });
 
+        // دالة لتحديث حالة القلب في كل مكان
+        function updateHeartStatus(productName, isFavorite) {
+            // تحديث القلب في الصفحة الرئيسية
+            document.querySelectorAll('.camera-card').forEach(card => {
+                if (card.querySelector('.camera-title').textContent === productName) {
+                    const heartIcon = card.querySelector('.add-to-favorites i');
+                    heartIcon.style.color = isFavorite ? '#e74c3c' : '#333';
+                }
+            });
+
+            // تحديث القلب في النافذة المنبثقة
+            const modalTitle = document.getElementById('modalTitle');
+            if (modalTitle && modalTitle.textContent === productName) {
+                const modalHeartIcon = document.querySelector('.modal-add-to-favorites i');
+                if (modalHeartIcon) {
+                    modalHeartIcon.style.color = isFavorite ? '#e74c3c' : '#333';
+                }
+            }
+        }
+
+        // تحديث مستمع الحدث لزر المفضلة في البطاقة
         document.querySelectorAll('.add-to-favorites').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.querySelector('i').classList.toggle('fa-heart');
-                this.querySelector('i').classList.toggle('fa-heart-o');
-                alert('تمت إضافة المنتج إلى المفضلة');
+                
+                const card = this.closest('.camera-card');
+                const productName = card.querySelector('.camera-title').textContent;
+                const productPrice = card.querySelector('.camera-price').textContent;
+                const productImage = card.querySelector('.camera-image img').src;
+                
+                toggleFavorite(productName, productPrice, productImage);
             });
         });
 
-        // إضافة وظيفة زر عرض التفاصيل
+        // تحديث مستمع الحدث لزر المفضلة في النافذة المنبثقة
+        document.querySelector('.modal-add-to-favorites').addEventListener('click', function() {
+            const productName = document.getElementById('modalTitle').textContent;
+            const productPrice = document.getElementById('modalPrice').textContent;
+            const productImage = document.getElementById('modalMainImage').src;
+            
+            toggleFavorite(productName, productPrice, productImage);
+        });
+
+        // تحديث حالة القلب عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            favorites.forEach(item => {
+                updateHeartStatus(item.name, true);
+            });
+            updateFavoritesCount();
+        });
+
+        // تحديث دالة عرض النافذة المنبثقة
+        function showProductModal(card) {
+            const title = card.querySelector('.camera-title').textContent;
+            const image = card.querySelector('.camera-image img').src;
+            const price = card.querySelector('.camera-price').textContent;
+            const specs = card.querySelectorAll('.camera-specs span');
+            const badge = card.querySelector('.camera-badge');
+            
+            // تحديث محتوى النافذة المنبثقة
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMainImage').src = image;
+            
+            // إضافة الشارة إذا وجدت
+            const modalHeader = document.querySelector('.modal-header');
+            if (badge) {
+                const modalBadge = document.createElement('div');
+                modalBadge.className = 'camera-badge';
+                modalBadge.style.cssText = badge.style.cssText;
+                modalBadge.textContent = badge.textContent;
+                modalHeader.appendChild(modalBadge);
+            }
+            
+            // تحديث الصور المصغرة
+            const thumbnailsContainer = document.getElementById('modalThumbnails');
+            thumbnailsContainer.innerHTML = '';
+            
+            const popupThumbs = card.querySelector('.product-popup .popup-thumbs');
+            if (popupThumbs) {
+                const thumbImages = popupThumbs.querySelectorAll('.popup-thumb img');
+                thumbImages.forEach((thumbImg, index) => {
+                    const thumb = document.createElement('div');
+                    thumb.className = 'modal-thumb';
+                    thumb.innerHTML = `<img src="${thumbImg.src}" alt="${title} - صورة ${index+1}">`;
+                    thumb.addEventListener('click', function() {
+                        document.getElementById('modalMainImage').src = this.querySelector('img').src;
+                    });
+                    thumbnailsContainer.appendChild(thumb);
+                });
+            }
+            
+            // تحديث المواصفات
+            const modalSpecs = document.getElementById('modalSpecs');
+            modalSpecs.innerHTML = '<h3>المواصفات</h3><ul></ul>';
+            const specsList = modalSpecs.querySelector('ul');
+            
+            specs.forEach(spec => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = spec.innerHTML;
+                specsList.appendChild(listItem);
+            });
+            
+            // إضافة معلومات إضافية من النافذة المنبثقة الصغيرة
+            const popupDetails = card.querySelector('.product-popup .popup-details');
+            if (popupDetails) {
+                const popupDetailItems = popupDetails.querySelectorAll('.popup-detail');
+                popupDetailItems.forEach(item => {
+                    const label = item.querySelector('.detail-label').textContent;
+                    const value = item.querySelector('.detail-value').textContent;
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
+                    specsList.appendChild(listItem);
+                });
+            }
+            
+            // تحديث السعر
+            document.getElementById('modalPrice').innerHTML = `<span class="popup-sar-symbol"></span><span>${price}</span>`;
+            
+            // تحديث حالة القلب
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const isFavorite = favorites.some(item => item.name === title);
+            const modalHeartIcon = document.querySelector('.modal-add-to-favorites i');
+            modalHeartIcon.style.color = isFavorite ? '#e74c3c' : '#333';
+            
+            // عرض النافذة المنبثقة
+            document.getElementById('productModal').style.display = 'block';
+        }
+
+        // تحديث مستمع الحدث لزر عرض التفاصيل
         document.querySelectorAll('.view-details-btn').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                // الحصول على بيانات البطاقة
                 const card = this.closest('.camera-card');
-                const title = card.querySelector('.camera-title').textContent;
-                const image = card.querySelector('.camera-image img').src;
-                const price = card.querySelector('.camera-price').textContent;
-                const specs = card.querySelectorAll('.camera-specs span');
-                
-                // تحديث بيانات النافذة المنبثقة
-                document.getElementById('modalTitle').textContent = title;
-                document.getElementById('modalMainImage').src = image;
-                
-                // إنشاء الصور المصغرة
-                const thumbnailsContainer = document.getElementById('modalThumbnails');
-                thumbnailsContainer.innerHTML = '';
-                
-                // استخدام الصور من النافذة المنبثقة الحالية إذا وجدت
-                const popupThumbs = card.querySelector('.product-popup .popup-thumbs');
-                if (popupThumbs) {
-                    const thumbImages = popupThumbs.querySelectorAll('.popup-thumb img');
-                    thumbImages.forEach((thumbImg, index) => {
-                        const thumb = document.createElement('div');
-                        thumb.className = 'modal-thumb';
-                        thumb.innerHTML = `<img src="${thumbImg.src}" alt="${title} - صورة ${index+1}">`;
-                        
-                        // تغيير الصورة الرئيسية عند النقر على الصورة المصغرة
-                        thumb.addEventListener('click', function() {
-                            document.getElementById('modalMainImage').src = this.querySelector('img').src;
-                        });
-                        
-                        thumbnailsContainer.appendChild(thumb);
-                    });
-                    
-                    // تعيين الصورة الرئيسية كأول صورة من الصور المصغرة
-                    if (thumbImages.length > 0) {
-                        document.getElementById('modalMainImage').src = thumbImages[0].src;
-                    }
-                } else {
-                    // استخدام الصور المتوفرة أو نفس الصورة لإكمال 3 صور
-                    const images = [image, image, image];
-                    images.slice(0, 3).forEach((img, index) => {
-                        const thumb = document.createElement('div');
-                        thumb.className = 'modal-thumb';
-                        thumb.innerHTML = `<img src="${img}" alt="${title} - صورة ${index+1}">`;
-                        
-                        thumb.addEventListener('click', function() {
-                            document.getElementById('modalMainImage').src = this.querySelector('img').src;
-                        });
-                        
-                        thumbnailsContainer.appendChild(thumb);
-                    });
-                }
-                
-                // إضافة المواصفات
-                const modalSpecs = document.getElementById('modalSpecs');
-                modalSpecs.innerHTML = '';
-                
-                // إضافة عنوان للمواصفات
-                const specsTitle = document.createElement('h3');
-                specsTitle.textContent = 'المواصفات';
-                modalSpecs.appendChild(specsTitle);
-                
-                // نسخ المواصفات من البطاقة
-                const specsList = document.createElement('ul');
-                
-                // تعريف متغيرات لتجنب التكرار
-                let hasResolution = false;
-                let hasAperture = false;
-                
-                // إضافة المواصفات من البطاقة
-                specs.forEach(spec => {
-                    const specText = spec.textContent.toLowerCase();
-                    const listItem = document.createElement('li');
-                    
-                    // التحقق ومعالجة المواصفات لتجنب التكرار
-                    if (specText.includes('البعد البؤري') || specText.includes('ملم')) {
-                        if (!hasResolution) {
-                            listItem.innerHTML = spec.innerHTML;
-                            specsList.appendChild(listItem);
-                            hasResolution = true;
-                        }
-                    } else if (specText.includes('فتحة') || specText.includes('f/')) {
-                        if (!hasAperture) {
-                            listItem.innerHTML = spec.innerHTML;
-                            specsList.appendChild(listItem);
-                            hasAperture = true;
-                        }
-                    } else {
-                        listItem.innerHTML = spec.innerHTML;
-                        specsList.appendChild(listItem);
-                    }
-                });
-                
-                modalSpecs.appendChild(specsList);
-                
-                // إضافة معلومات إضافية من النافذة المنبثقة الصغيرة إذا وجدت
-                const popupDetails = card.querySelector('.product-popup .popup-details');
-                if (popupDetails) {
-                    const popupDetailItems = popupDetails.querySelectorAll('.popup-detail');
-                    popupDetailItems.forEach(item => {
-                        const label = item.querySelector('.detail-label').textContent;
-                        const value = item.querySelector('.detail-value').textContent;
-                        
-                        // تجنب إضافة معلومات متكررة
-                        if (label.includes('البعد البؤري') && !hasResolution) {
-                            const listItem = document.createElement('li');
-                            listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
-                            specsList.appendChild(listItem);
-                            hasResolution = true;
-                        } else if (label.includes('فتحة') && !hasAperture) {
-                            const listItem = document.createElement('li');
-                            listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
-                            specsList.appendChild(listItem);
-                            hasAperture = true;
-                        } else if (!label.includes('البعد البؤري') && !label.includes('فتحة')) {
-                            const listItem = document.createElement('li');
-                            listItem.innerHTML = `<i class="fas fa-info-circle"></i> <strong>${label}</strong> ${value}`;
-                            specsList.appendChild(listItem);
-                        }
-                    });
-                }
-                
-                // إضافة خصائص إضافية لعدسة سيجما فقط
-                if (title.includes('سيجما')) {
-                    const additionalSpecs = [
-                        { label: 'نوع العدسة', value: 'زوم', icon: 'fa-exchange-alt' },
-                        { label: 'التوافق مع', value: 'سوني E', icon: 'fa-link' }
-                    ];
-                    
-                    additionalSpecs.forEach(spec => {
-                        const listItem = document.createElement('li');
-                        listItem.innerHTML = `<i class="fas ${spec.icon}"></i> <strong>${spec.label}:</strong> ${spec.value}`;
-                        specsList.appendChild(listItem);
-                    });
-                }
-                
-                // إضافة خصائص إضافية لعدسة كانون مايكرو فقط
-                if (title.includes('كانون مايكرو')) {
-                    const additionalSpecs = [
-                        { label: 'نوع العدسة', value: 'واسعة الزاوية', icon: 'fa-expand' },
-                        { label: 'التوافق مع', value: 'كانون RF', icon: 'fa-link' }
-                    ];
-                    
-                    additionalSpecs.forEach(spec => {
-                        const listItem = document.createElement('li');
-                        listItem.innerHTML = `<i class="fas ${spec.icon}"></i> <strong>${spec.label}:</strong> ${spec.value}`;
-                        specsList.appendChild(listItem);
-                    });
-                }
-                
-                // إضافة خصائص إضافية لعدسة تامرون فقط
-                if (title.includes('تامرون')) {
-                    const additionalSpecs = [
-                        { label: 'نوع العدسة', value: 'قياسية', icon: 'fa-camera-retro' },
-                        { label: 'التوافق مع', value: 'سوني E', icon: 'fa-link' }
-                    ];
-                    
-                    additionalSpecs.forEach(spec => {
-                        const listItem = document.createElement('li');
-                        listItem.innerHTML = `<i class="fas ${spec.icon}"></i> <strong>${spec.label}:</strong> ${spec.value}`;
-                        specsList.appendChild(listItem);
-                    });
-                }
-                
-                // إضافة معلومات التوفر
-                const availabilityElement = document.createElement('div');
-                availabilityElement.className = 'modal-availability';
-                availabilityElement.innerHTML = '<i class="fas fa-check-circle"></i> متوفر في المخزون';
-                modalSpecs.appendChild(availabilityElement);
-                
-                // إضافة السعر
-                document.getElementById('modalPrice').innerHTML = `<span class="popup-sar-symbol"></span><span>${price}</span>`;
-                
-                // عرض النافذة المنبثقة
-                document.getElementById('productModal').style.display = 'block';
+                showProductModal(card);
             });
         });
+
+        // تحديث دالة إضافة/إزالة من المفضلة
+        function toggleFavorite(productName, productPrice, productImage) {
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const isFavorite = favorites.some(item => item.name === productName);
+            
+            if (isFavorite) {
+                favorites = favorites.filter(item => item.name !== productName);
+            } else {
+                favorites.push({ name: productName, price: productPrice, image: productImage });
+            }
+            
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            updateHeartStatus(productName, !isFavorite);
+            updateFavoritesCount();
+            
+            // عرض إشعار
+            showNotification(isFavorite ? 'تم إزالة المنتج من المفضلة' : 'تمت إضافة المنتج إلى المفضلة', 'success');
+        }
 
         // وظائف النافذة المنبثقة
         const modal = document.getElementById('productModal');
@@ -1472,17 +1438,7 @@
             }
         }
 
-        // إضافة وظائف لأزرار النافذة المنبثقة
-        document.querySelector('.modal-add-to-cart').addEventListener('click', function() {
-            alert('تمت إضافة المنتج إلى سلة التسوق');
-        });
-        
-        document.querySelector('.modal-add-to-favorites').addEventListener('click', function() {
-            alert('تمت إضافة المنتج إلى المفضلة');
-            this.innerHTML = '<i class="fas fa-heart" style="color: #e74c3c;"></i> تمت الإضافة للمفضلة';
-        });
-        
-        // إضافة وظائف التنقل بين الصفحات
+        // إضافة وظيفة التنقل بين الصفحات
         const paginationButtons = document.querySelectorAll('.pagination button');
         const camerasGrid = document.querySelector('.cameras-grid');
         const cameras = document.querySelectorAll('.camera-card');
@@ -1643,6 +1599,28 @@
             setTimeout(() => {
                 notification.remove();
             }, 3000);
+        }
+
+        // تحديث حالة القلب عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            document.querySelectorAll('.camera-card').forEach(card => {
+                const productName = card.querySelector('.camera-title').textContent;
+                const heartIcon = card.querySelector('.add-to-favorites i');
+                if (favorites.some(item => item.name === productName)) {
+                    heartIcon.style.color = '#e74c3c';
+                }
+            });
+            updateFavoritesCount();
+        });
+
+        // دالة تحديث عداد المفضلة
+        function updateFavoritesCount() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const favoritesCount = document.querySelector('.favorites-count');
+            if (favoritesCount) {
+                favoritesCount.textContent = favorites.length;
+            }
         }
     </script>
 </body>
